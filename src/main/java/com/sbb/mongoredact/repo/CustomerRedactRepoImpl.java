@@ -1,93 +1,55 @@
 package com.sbb.mongoredact.repo;
 
-import com.mongodb.BasicDBObject;
 import com.sbb.mongoredact.model.Customer;
-import org.bson.Document;
-import org.bson.types.ObjectId;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
-import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
+import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 import org.springframework.data.mongodb.core.aggregation.MatchOperation;
+import org.springframework.data.mongodb.core.aggregation.RedactOperation;
+import org.springframework.data.mongodb.core.query.Criteria;
 
-import java.util.*;
+import java.util.List;
 
-import static com.mongodb.client.model.Aggregates.match;
-import static com.mongodb.client.model.Filters.eq;
+import static org.springframework.data.mongodb.core.aggregation.Aggregation.DEFAULT_CONTEXT;
+import static org.springframework.data.mongodb.core.aggregation.Aggregation.redact;
+import static org.springframework.data.mongodb.core.aggregation.ArrayOperators.arrayOf;
+import static org.springframework.data.mongodb.core.aggregation.ConditionalOperators.when;
+import static org.springframework.data.mongodb.core.aggregation.SetOperators.arrayAsSet;
+import static org.springframework.data.mongodb.core.aggregation.VariableOperators.mapItemsOf;
 
 public class CustomerRedactRepoImpl implements CustomerRedactRepo {
 
+    @Autowired
+    MongoTemplate mongoTemplate;
+
     @Override
-    public Customer findByFirstNameRedacted(String firstName, List<String> access) {
+    public Customer findByFirstNameRedacted(String firstName, List<String> userAccess) {
 
-        AggregationOperation redactOperation = aggregationOperationContext -> {
-            Map<String, Object> map = new LinkedHashMap<>();
-            BasicDBObject cmp =  new BasicDBObject("$cmp", Arrays.asList( "$items.address","$dist.location"));
-            map.put("if", new BasicDBObject("$eq", Arrays.asList(cmp, 0)));
-            map.put("then", "$$KEEP");
-            map.put("else", "$$PRUNE");
-            return new BasicDBObject("$redact", new BasicDBObject("$cond", map));
-        };
+        System.out.println(mongoTemplate);
+        MatchOperation matchStage = Aggregation.match(new Criteria("firstName").is("Pete"));
 
-        // Requires official MongoShell 3.6+
-        use redact_test;
-        db.getCollection("customer").aggregate(
-                [
-                {
-                        "$match" : {
-            "firstName" : "Pete"
-        }
-        },
-        {
-            "$redact" : {
-            "$cond" : {
-                "if" : {
-                    "$anyElementTrue" : [
-                    {
-                        "$map" : {
-                        "input" : "$tags",
-                                "as" : "objectAccess",
-                                "in" : {
-                            "$setIsSubset" : [
-                                            [
-                            "$$objectAccess"
-                                            ],
-                                            [
-                            "ALL",
-                                    "aaa"
-                                            ]
-                                        ]
-                        }
-                    }
-                    }
-                        ]
-                },
-                "then" : "$$DESCEND",
-                        "else" : "$$PRUNE"
-            }
-        }
-        }
-    ],
-        {
-            "allowDiskUse" : false
-        }
-);
+            RedactOperation redact = redact(when(
+                arrayAsSet(
+                        mapItemsOf("tags")
+                                .as("objectAccess")
+                                .andApply(
+                                        arrayOf(userAccess).containsValue("$$objectAccess")
+                                )
+                ).anyElementTrue()
+            ).then(RedactOperation.DESCEND)
+            .otherwise(RedactOperation.PRUNE));
 
+        System.out.println(redact.toDocument(Aggregation.DEFAULT_CONTEXT).toJson());
 
-        MatchOperation match = null;
-        AggregationOperation aggOp = Aggregation.newAggregation(Customer.class, Aggregation.redact())
+        Aggregation aggregation
+                = Aggregation.newAggregation(matchStage, redact);
 
-//        Aggregation redactAgg = Aggregation.newAggregation(match);
-        Aggregation redactAgg = Aggregation.newAggregation(Customer.class, Arrays.asList(
-            match(eq("firstName", firstName)),
-            new Document("$redact",
-                new Document("$cond", Arrays.asList(
-                    new Document("$anyElementTrue",
-                        new Document("$map", new Document("input", "$tags")
-                            .append("as", "objectAccess")
-                            .append("in",
-                                new Document("$setIsSubset", Arrays.asList("$$objectAccess", access)))))
-                    , "$$DESCEND", "$$PRUNE")))
-        ));
+        System.out.println(aggregation.toDocument("customer", DEFAULT_CONTEXT).toJson());
 
-        return null;
+        AggregationResults<Customer> output
+                = mongoTemplate.aggregate(aggregation, "customer", Customer.class);
+
+        return output.getMappedResults().get(0);
     }
 }
