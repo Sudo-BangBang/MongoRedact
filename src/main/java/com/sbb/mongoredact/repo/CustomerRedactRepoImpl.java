@@ -27,7 +27,7 @@ public class CustomerRedactRepoImpl implements CustomerRedactRepo {
     public Customer findByFirstNameRedacted(String firstName, List<String> userAccess) {
 
         System.out.println(mongoTemplate);
-        MatchOperation matchStage = Aggregation.match(new Criteria("firstName").is("Pete"));
+        MatchOperation matchStage = Aggregation.match(new Criteria("firstName").is(firstName));
 
             RedactOperation redact = redact(when(
                 arrayAsSet(
