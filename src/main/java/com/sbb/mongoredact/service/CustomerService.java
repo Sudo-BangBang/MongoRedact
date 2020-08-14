@@ -26,10 +26,10 @@ public class CustomerService {
         repository.deleteAll();
 
         // save a couple of customers
-        repository.save(alice);
-        repository.save(bob);
-        repository.save(james);
-        repository.save(pete);
+        insertCustomer(alice);
+        insertCustomer(bob);
+        insertCustomer(james);
+        insertCustomer(pete);
 
         // fetch all customers
         System.out.println("Customers found with findAll():");
@@ -68,7 +68,10 @@ public class CustomerService {
     }
 
     public Customer getRedactedCustomer(String firstName, List<String> access){
-
         return repository.findByFirstNameRedacted(firstName, access);
+    }
+
+    public Customer insertCustomer(Customer customer){
+        return repository.insert(customer);
     }
 }
