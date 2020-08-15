@@ -23,7 +23,6 @@ public class CustomerRedactRepoImpl implements CustomerRedactRepo {
     @Override
     public Customer findByFirstNameRedacted(String firstName, List<String> userAccess) {
 
-        System.out.println(mongoTemplate);
         MatchOperation matchStage = Aggregation.match(new Criteria("firstName").is(firstName));
 
             RedactOperation redact = redact(when(

@@ -1,8 +1,9 @@
 package com.sbb.mongoredact.model;
 
+import java.io.Serializable;
 import java.util.List;
 
-public class SecureDocument {
+public class SecureDocument implements Serializable {
 
     private List<String> tags;
 

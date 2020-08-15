@@ -4,6 +4,8 @@ import com.sbb.mongoredact.model.Address;
 import com.sbb.mongoredact.model.CardDetails;
 import com.sbb.mongoredact.model.Customer;
 import com.sbb.mongoredact.repo.CustomerRepository;
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang.SerializationUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -62,9 +64,6 @@ public class CustomerService {
         System.out.println("--------------------------------");
         System.out.println(repository.findByCvv("251"));
 
-//        Customer alice = repository.findByFirstName("Alice");
-//        Customer bob = repository.findByFirstName("Bob");
-
     }
 
     public Customer getRedactedCustomer(String firstName, List<String> access){
@@ -73,5 +72,29 @@ public class CustomerService {
 
     public Customer insertCustomer(Customer customer){
         return repository.insert(customer);
+    }
+
+    public Customer updateCustomer(Customer customer, List<String> userAccess){
+        repository.save(mergeUpdatedCustomerWithDbCustomer(customer, userAccess));
+        return this.getRedactedCustomer(customer.getFirstName(), userAccess);
+    }
+
+    private Customer mergeUpdatedCustomerWithDbCustomer(Customer updatedCustomer, List<String> userAccess){
+
+        //We don't want to modify the passed customer with restricted data so clone it
+        Customer mergedCustomer = (Customer) SerializationUtils.clone(updatedCustomer);
+
+        Customer fullCustomer = repository.findById(mergedCustomer.getId()).get();
+
+        //If there are no element in common between the user access and the tags on the address, then that means the user can't see it and that we should keep the one in the database
+        if(!CollectionUtils.containsAny(fullCustomer.getAddress().getTags(), userAccess)){
+            mergedCustomer.setAddress(fullCustomer.getAddress());
+        }
+
+        if(!CollectionUtils.containsAny(fullCustomer.getCardDetails().getTags(), userAccess)){
+            mergedCustomer.setCardDetails(fullCustomer.getCardDetails());
+        }
+
+        return mergedCustomer;
     }
 }

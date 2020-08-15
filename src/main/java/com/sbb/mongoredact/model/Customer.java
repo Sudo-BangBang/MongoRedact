@@ -62,6 +62,10 @@ public class Customer extends SecureDocument {
         this.cardDetails = cardDetails;
     }
 
+    public String getId() {
+        return id;
+    }
+
     @Override
     public String toString() {
         return "Customer{" +

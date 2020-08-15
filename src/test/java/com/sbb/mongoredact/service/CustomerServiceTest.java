@@ -69,6 +69,28 @@ class CustomerServiceTest {
         System.out.println(customer);
         assertNull(customer.getAddress());
         assertNull(customer.getCardDetails());
+    }
+
+
+    @Test
+    void saveRedactedDoesNotLoseData() {
+        //Fetch a fully redacted Pete
+        Customer pete = customerService.getRedactedCustomer("Pete",  Arrays.asList("ALL"));
+
+        //Check we didn't get back data we shouldn't
+        assertNull(pete.getAddress());
+        assertNull(pete.getCardDetails());
+
+        //Update Pete
+        pete.setFirstName("Pete-updated-name");
+        customerService.updateCustomer(pete, Arrays.asList("ALL"));
+
+        //Fetch pete with all redacted data
+        Customer newPete = customerService.getRedactedCustomer("Pete-updated-name",  Arrays.asList("ALL", "aaa", "bbb"));
+        assertEquals("Pete-updated-name", newPete.getFirstName());
+        //Check we didnt lose anything in the update
+        assertEquals("12 Moblin Lane", newPete.getAddress().getLineOne());
+        assertEquals("251", newPete.getCardDetails().getCvv());
 
     }
 }
