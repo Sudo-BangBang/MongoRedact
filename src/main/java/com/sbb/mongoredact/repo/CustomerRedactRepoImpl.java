@@ -36,12 +36,12 @@ public class CustomerRedactRepoImpl implements CustomerRedactRepo {
             ).then(RedactOperation.DESCEND)
             .otherwise(RedactOperation.PRUNE));
 
-        System.out.println(redact.toDocument(Aggregation.DEFAULT_CONTEXT).toJson());
+//        System.out.println(redact.toDocument(Aggregation.DEFAULT_CONTEXT).toJson());
 
         Aggregation aggregation
                 = Aggregation.newAggregation(matchStage, redact);
 
-        System.out.println(aggregation.toDocument("customer", DEFAULT_CONTEXT).toJson());
+//        System.out.println(aggregation.toDocument("customer", DEFAULT_CONTEXT).toJson());
 
         AggregationResults<Customer> output
                 = mongoTemplate.aggregate(aggregation, Customer.class, Customer.class);
